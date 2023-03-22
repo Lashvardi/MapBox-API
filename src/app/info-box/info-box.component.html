@@ -1,0 +1,9 @@
+<div *ngIf="imageSrc && header">
+  <div class="card info-box" style="width: 18rem;">
+    <img [src]="imageSrc" class="card-img-top" alt="Bus Image" />
+    <div class="card-body">
+      <h5 class="card-title">{{ header }}</h5>
+      <p class="card-text">{{distance}}</p>
+    </div>
+  </div>
+</div>
