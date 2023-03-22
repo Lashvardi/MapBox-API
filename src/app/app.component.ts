@@ -28,6 +28,25 @@ export class AppComponent {
     );
   }
 
+  async fetchLocationInfo(latitude: number, longitude: number): Promise<string> {
+    const geocodingAPIURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=pk.eyJ1IjoibGFzaHZhcmRpIiwiYSI6ImNsZmd6MzgzbzFibjYzdG56Y2JvbDVscGcifQ.U3o0WZs8iM9EhWIJ1XoBzQ`;
+
+    try {
+      const response = await fetch(geocodingAPIURL);
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        console.log(data)
+        return data.features[0].text;
+      } else {
+        console.error('No location information found');
+        return 'Unknown Location';
+      }
+    } catch (error) {
+      console.error('Error fetching location information:', error);
+      return 'Error Fetching Location';
+    }
+  }
+
   async getDirections(
     origin: mapboxgl.LngLatLike,
     destination: mapboxgl.LngLatLike
@@ -50,7 +69,7 @@ export class AppComponent {
         destination: destinationCoords,
       });
       return;
-    }
+    } 
 
     const directionsAPIURL = `https://api.mapbox.com/directions/v5/mapbox/driving/${originCoords[0]},${originCoords[1]};${destinationCoords[0]},${destinationCoords[1]}?access_token=pk.eyJ1IjoibGFzaHZhcmRpIiwiYSI6ImNsZmd6MzgzbzFibjYzdG56Y2JvbDVscGcifQ.U3o0WZs8iM9EhWIJ1XoBzQ&geometries=geojson`;
 
@@ -83,20 +102,22 @@ export class AppComponent {
   }
 
   markers: Array<{ latitude: number; longitude: number }> = [];
-  onMarkerClick(marker: { latitude: number; longitude: number }) {
+  async onMarkerClick(marker: { latitude: number; longitude: number }) {
     if (this.userLocation) {
       const markerCoords = new mapboxgl.LngLat(
         marker.longitude,
         marker.latitude
       );
+
       const distanceInMeters = this.userLocation.distanceTo(markerCoords);
       const distanceInKilometers = distanceInMeters / 1000;
       console.log(`დისტანცია: ${distanceInKilometers.toFixed(2)} კილომეტრი`);
       const randomCacheBuster = Math.floor(Math.random() * 100000);
       this.infoBoxImageSrc = `https://source.unsplash.com/random/200x100?Taxi&${randomCacheBuster}`;
-      this.infoBoxHeader = 'სატესტო ტექსტი';
-      this.infoBoxDistance = `დისტანცია: ${distanceInKilometers.toFixed(2)} კილომეტრი`;
-
+      this.infoBoxHeader = await this.fetchLocationInfo(marker.latitude, marker.longitude);
+      this.infoBoxDistance = `დისტანცია: ${distanceInKilometers.toFixed(
+        2
+      )} კილომეტრი`;
 
       this.getDirections(this.userLocation, [
         marker.longitude,
