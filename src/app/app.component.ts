@@ -1,16 +1,29 @@
 import { Component, Input } from '@angular/core';
 import * as mapboxgl from 'mapbox-gl';
 import { NgxMapboxGLModule } from 'ngx-mapbox-gl';
+import { FeatureCollection } from 'geojson';
+import { MapComponent } from 'ngx-mapbox-gl';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
+
 export class AppComponent {
   title = 'busbookMap';
   infoBoxImageSrc: string | null = null;
   infoBoxHeader: string | null = null;
   infoBoxDistance: string | null = null;
+  mapComponent: MapComponent | undefined;
+
+
+
+  markers: Array<{ latitude: number; longitude: number; type?: string }> = [];
+
+   getClusterRadius(zoom: number) {
+    return zoom < 10 ? 50 : zoom < 12 ? 30 : zoom < 14 ? 20 : 10;
+  }
 
   isValidCoordinate(coord: any): boolean {
     if (!Array.isArray(coord) || coord.length !== 2) {
@@ -69,7 +82,7 @@ export class AppComponent {
         destination: destinationCoords,
       });
       return;
-    } 
+    }
 
     const directionsAPIURL = `https://api.mapbox.com/directions/v5/mapbox/driving/${originCoords[0]},${originCoords[1]};${destinationCoords[0]},${destinationCoords[1]}?access_token=pk.eyJ1IjoibGFzaHZhcmRpIiwiYSI6ImNsZmd6MzgzbzFibjYzdG56Y2JvbDVscGcifQ.U3o0WZs8iM9EhWIJ1XoBzQ&geometries=geojson`;
 
@@ -101,13 +114,15 @@ export class AppComponent {
     }
   }
 
-  markers: Array<{ latitude: number; longitude: number }> = [];
-  async onMarkerClick(marker: { latitude: number; longitude: number }) {
+  markersGeoJSON: FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [],
+  };
+  async onMarkerClick(marker: { latitude: number; longitude: number }, event: any) {
     if (this.userLocation) {
-      const markerCoords = new mapboxgl.LngLat(
-        marker.longitude,
-        marker.latitude
-      );
+      const markerCoords = event.lngLat;
+      const latitude = markerCoords.lat;
+      const longitude = markerCoords.lng;
 
       const distanceInMeters = this.userLocation.distanceTo(markerCoords);
       const distanceInKilometers = distanceInMeters / 1000;
@@ -140,24 +155,60 @@ export class AppComponent {
       }
     );
   }
+
+  convertToGeoJSON(markers: Array<{ latitude: number; longitude: number; icon: string; type?: string }>): any {
+    const features = markers.map(marker => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [marker.longitude, marker.latitude], // include coordinates property
+      },
+      properties: {
+        icon: marker.icon,
+      },
+    }));
+
+    return {
+      type: 'FeatureCollection',
+      features: features,
+    };
+  }
   generateNearbyMarkers(
-    latitude: number,
-    longitude: number,
     count: number,
     range: number
-  ) {
+  ): Array<{ latitude: number; longitude: number; type?: string }> {
+    const locations = [
+      [41.75055219714324, 44.78023479204452],
+      [41.6865265867009, 44.85223384228217],
+      [41.688759215492254, 44.840749507126716],
+      [41.68252794730424, 44.831863115564175],
+      [41.79514546293498, 44.82234117479674],
+    ];
+
     const markers = [];
 
     for (let i = 0; i < count; i++) {
+      const randomLocationIndex = Math.floor(Math.random() * locations.length);
+      const [latitude, longitude] = locations[randomLocationIndex];
+
       const randomLat = latitude + (Math.random() * 2 - 1) * range;
       const randomLng = longitude + (Math.random() * 2 - 1) * range;
 
       markers.push({ latitude: randomLat, longitude: randomLng });
+
+      this.markersGeoJSON.features.push({
+        type: 'Feature',
+        properties: { markerType: 'location' },
+        geometry: {
+          type: 'Point',
+          coordinates: [randomLng, randomLat],
+        },
+      });
+
     }
 
     return markers;
   }
-
   routeGeoJSON: mapboxgl.GeoJSONSourceRaw | null = null;
   userLocation: mapboxgl.LngLat | null = null;
 
@@ -171,12 +222,9 @@ export class AppComponent {
         this.userLocation = new mapboxgl.LngLat(userCoords[0], userCoords[1]);
 
         // Generate markers near the user's location
-        this.markers = this.generateNearbyMarkers(
-          userCoords[1],
-          userCoords[0],
-          100,
-          0.1
-        );
+        this.markers = this.generateNearbyMarkers(30, 0.001);
+
+        this.addLocationMarkers();
 
         if (callback) {
           callback();
@@ -188,7 +236,29 @@ export class AppComponent {
     );
   }
 
+  addLocationMarkers() {
+    const locations = [
+      [41.75055219714324, 44.78023479204452],
+      [41.6865265867009, 44.85223384228217],
+      [41.688759215492254, 44.840749507126716],
+      [41.68252794730424, 44.831863115564175],
+      [41.79514546293498, 44.82234117479674],
+    ];
+
+    for (const [latitude, longitude] of locations) {
+      this.markersGeoJSON.features.push({
+        type: 'Feature',
+        properties: { markerType: 'location' },
+        geometry: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
+      });
+    }
+  }
+
   ngOnInit() {
+
     this.getUserLocation();
   }
 }

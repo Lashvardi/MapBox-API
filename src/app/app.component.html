@@ -1,52 +1,71 @@
-<mgl-map
-  #map
-  [style]="'mapbox://styles/lashvardi/clfgxyw4700ln01mriqocpnek'"
-  [zoom]="[13]"
-  [center]="userLocation || [42.716667, 42.783333]"
->
+<mgl-map   #map [style]="'mapbox://styles/lashvardi/clfgxyw4700ln01mriqocpnek'" [zoom]="[13]"
+  [center]="userLocation || [42.716667, 42.783333]">
   <mgl-control mglNavigation></mgl-control>
   <mgl-control mglScale unit="imperial" position="top-right"></mgl-control>
   <mgl-control mglGeolocation position="top-right"></mgl-control>
 
-<mgl-marker
-  *ngFor="let marker of markers"
-  [lngLat]="[marker.longitude, marker.latitude]"
->
-  <div (click)="onMarkerClick(marker)" class="marker">
-    <img width="50px" src="../assets/Frame.png" alt="" />
-  </div>
-</mgl-marker>
+  <ng-container *ngFor="let marker of markers">
+
+
+    <mgl-geojson-source id="markersSource" [data]="markersGeoJSON" [cluster]="true" [clusterMaxZoom]="14"
+      [clusterRadius]="100">
+    </mgl-geojson-source>
+    <mgl-layer id="cluster-count-background" type="circle" source="markersSource" [filter]="['has', 'point_count']"
+      [paint]="{
+      'circle-color': [
+        'step',
+        ['get', 'point_count'],
+        '#51bbd6',
+        100,
+        '#f1f075',
+        750,
+        '#f28cb1'
+      ],
+      'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 30, 100, 100],
+      'circle-opacity': 0.6
+    }"></mgl-layer>
+    <mgl-layer id="cluster-count" type="symbol" source="markersSource" [filter]="['has', 'point_count']" [layout]="{
+      'text-field': '{point_count_abbreviated}',
+      'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      'text-size': 30,
+      'text-anchor': 'center',
+      'text-offset': [0, 0]
+    }" [paint]="{
+      'text-color': '#ffffff',
+      'text-opacity': 0.9
+    }"></mgl-layer>
+
+    <mgl-layer (click)="onMarkerClick(marker,$event)" id="clusters" type="circle" source="markersSource" [filter]="['!', ['has', 'point_count']]" [paint]="{
+      'circle-color': '#00FF00',
+      'circle-radius': ['step', ['get', 'point_count'], 30, 10, 40, 20, 120]
+    }"></mgl-layer>
+
+
+
+
+
+  </ng-container>
+
+
 
   <mgl-marker *ngIf="userLocation" [lngLat]="userLocation">
     <div class="user-location-marker">
-      <img
-        width="20px"
+      <img width="20px"
         src="https://static.vecteezy.com/system/resources/previews/009/267/042/original/location-icon-design-free-png.png"
-        alt="User location"
-      />
+        alt="User location" />
     </div>
   </mgl-marker>
 
-  <mgl-geojson-source
-    id="routeSource"
-    [data]="routeGeoJSON?.data"
-  ></mgl-geojson-source>
+  <mgl-geojson-source id="routeSource" [data]="routeGeoJSON?.data"></mgl-geojson-source>
 
-  <mgl-layer
-    *ngIf="routeGeoJSON"
-    id="route"
-    type="line"
-    source="routeSource"
-    [layout]="{
+  <mgl-layer *ngIf="routeGeoJSON" id="route" type="line" source="routeSource" [layout]="{
       'line-join': 'round',
       'line-cap': 'round'
-    }"
-    [paint]="{
+    }" [paint]="{
       'line-color': '#0500ec',
       'line-width': 9,
       'line-opacity': 0.75
-    }"
-  ></mgl-layer>
+    }"></mgl-layer>
+
 </mgl-map>
 <app-info-box [imageSrc]="infoBoxImageSrc" [distance]="infoBoxDistance" [header]="infoBoxHeader"></app-info-box>
-
