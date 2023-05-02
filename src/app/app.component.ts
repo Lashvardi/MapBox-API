@@ -15,15 +15,43 @@ export class AppComponent {
   infoBoxImageSrc: string | null = null;
   infoBoxHeader: string | null = null;
   infoBoxDistance: string | null = null;
-  mapComponent: MapComponent | undefined;
+  mapLoading: boolean = true;
 
 
 
   markers: Array<{ latitude: number; longitude: number; type?: string }> = [];
 
-   getClusterRadius(zoom: number) {
-    return zoom < 10 ? 50 : zoom < 12 ? 30 : zoom < 14 ? 20 : 10;
+  getClusterRadius(zoom: number) {
+    return Math.min(
+      Math.max(
+        50 / Math.pow(2, zoom - 9),
+        5
+      ),
+      50
+    );
   }
+  
+  
+
+
+  onMapLoad(map: mapboxgl.Map) {
+    this.mapLoading = false;
+    map.loadImage(
+      './assets/Icon.png',
+      (error, image) => {
+        if (error) {
+          console.error('Error loading custom marker image:', error);
+          return;
+        }
+        if (image) {
+          map.addImage('custom-marker', image as HTMLImageElement | ImageBitmap);
+        } else {
+          console.error('Image is undefined.');
+        }
+      }
+    );
+  }
+  
 
   isValidCoordinate(coord: any): boolean {
     if (!Array.isArray(coord) || coord.length !== 2) {
@@ -121,8 +149,6 @@ export class AppComponent {
   async onMarkerClick(marker: { latitude: number; longitude: number }, event: any) {
     if (this.userLocation) {
       const markerCoords = event.lngLat;
-      const latitude = markerCoords.lat;
-      const longitude = markerCoords.lng;
 
       const distanceInMeters = this.userLocation.distanceTo(markerCoords);
       const distanceInKilometers = distanceInMeters / 1000;
@@ -257,8 +283,47 @@ export class AppComponent {
     }
   }
 
-  ngOnInit() {
+  async onLayerMarkerClick(event: any) {
+    const coordinates = event.lngLat;
+    const marker = { latitude: coordinates.lat, longitude: coordinates.lng };
 
+    if (this.userLocation) {
+      const markerCoords = event.lngLat;
+
+      const distanceInMeters = this.userLocation.distanceTo(markerCoords);
+      const distanceInKilometers = distanceInMeters / 1000;
+      console.log(`დისტანცია: ${distanceInKilometers.toFixed(2)} კილომეტრი`);
+
+      const randomCacheBuster = Math.floor(Math.random() * 100000);
+      this.infoBoxImageSrc = `https://source.unsplash.com/random/200x100?Taxi&${randomCacheBuster}`;
+      this.infoBoxHeader = await this.fetchLocationInfo(marker.latitude, marker.longitude);
+      this.infoBoxDistance = `დისტანცია: ${distanceInKilometers.toFixed(
+        2
+      )} კილომეტრი`;
+
+      this.getDirections(this.userLocation, [
+        marker.longitude,
+        marker.latitude,
+      ]);
+    } else {
+      console.warn('User location not available');
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userCoords: [number, number] = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+        this.userLocation = new mapboxgl.LngLat(userCoords[0], userCoords[1]);
+        this.getDirections(userCoords, [marker.longitude, marker.latitude]);
+      },
+      (error) => {
+        console.error('Error getting user location:', error);
+      }
+    );
+  }
+
+  ngOnInit() {
     this.getUserLocation();
   }
 }
