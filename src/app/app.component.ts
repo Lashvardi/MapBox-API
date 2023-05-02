@@ -70,7 +70,7 @@ export class AppComponent {
   }
 
   async fetchLocationInfo(latitude: number, longitude: number): Promise<string> {
-    const geocodingAPIURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=pk.eyJ1IjoibGFzaHZhcmRpIiwiYSI6ImNsZmd6MzgzbzFibjYzdG56Y2JvbDVscGcifQ.U3o0WZs8iM9EhWIJ1XoBzQ`;
+    const geocodingAPIURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=<Insert YOur Token>`;
 
     try {
       const response = await fetch(geocodingAPIURL);
